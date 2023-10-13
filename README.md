@@ -1,5 +1,5 @@
 **Link , donde generamos los simbolos griegos:** </br>
-https://github.com/JhonPoma/GuardamosSimbolos---2PC-grafica
+https://github.com/JhonPoma/GuardamosSimbolos---2PC-grafica </br>
 **Servidor Railway, para generar los simbolos:**</br>
 https://web-production-b831.up.railway.app/
 
