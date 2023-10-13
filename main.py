@@ -8,11 +8,19 @@ import numpy as np
 from keras.models import load_model
 from keras.preprocessing import image
 from io import BytesIO
+from PIL import Image
+from skimage.color import rgb2gray
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+from io import BytesIO
+from imageio import imread
+from skimage.transform import resize
+#import cv2
 
 app = Flask(__name__)
 
 # Cargar el modelo entrenado
-modelo = load_model('modelo_entrenado.h5')
+modelo = load_model('my_model.h5')
 
 main_html = """
 <html>
@@ -22,21 +30,10 @@ main_html = """
   var lastX, lastY;
   var ctx;
 
-   function getRndInteger(min, max) {
-    return Math.floor(Math.random() * (max - min) ) + min;
-   }
-
   function InitThis() {
       ctx = document.getElementById('myCanvas').getContext("2d");
-
-
-      numero = getRndInteger(0, 10);
-      letra = ["pi", "beta", "gamma", "delta", "epsilon"];
-      random = Math.floor(Math.random() * letra.length);
-      aleatorio = letra[random];
-
-      document.getElementById('mensaje').innerHTML  = 'Dibujando un ' + aleatorio;
-      document.getElementById('numero').value = aleatorio;
+      document.getElementById('mensaje').innerHTML  = 'Dibujando...';
+      document.getElementById('numero').value = '';  // Elimina la sugerencia inicial
 
       $('#myCanvas').mousedown(function (e) {
           mousePressed = true;
@@ -52,7 +49,7 @@ main_html = """
       $('#myCanvas').mouseup(function (e) {
           mousePressed = false;
       });
-        $('#myCanvas').mouseleave(function (e) {
+      $('#myCanvas').mouseleave(function (e) {
           mousePressed = false;
       });
   }
@@ -77,20 +74,34 @@ main_html = """
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   }
 
-  //https://www.askingbox.com/tutorial/send-html5-canvas-as-image-to-server
 function prepareImg() {
     var canvas = document.getElementById('myCanvas');
-    var imgData = canvas.toDataURL('image/png'); // Genera la imagen en formato PNG
+    var imgData = canvas.toDataURL('image/png');
     document.getElementById('myImage').value = imgData;
+
+    // Actualizar el mensaje a "Enviando..."
+    document.getElementById('mensaje').innerHTML = 'Enviando...';
+
+    // Realizar una solicitud AJAX para enviar la imagen
+    var formData = new FormData(document.forms[0]);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "upload", true);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            var response = xhr.responseText;
+            document.getElementById('mensaje').innerHTML = response;  // Actualizar el mensaje con la respuesta del servidor
+        }
+    };
+    xhr.send(formData);
+
+    return false;
 }
-
-
 
 
 </script>
 <body onload="InitThis();">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
-    <script type="text/javascript" ></script>
+    <script type="text/javascript"></script>
     <div align="left">
       <img src="https://upload.wikimedia.org/wikipedia/commons/f/f7/Uni-logo_transparente_granate.png" width="300"/>
     </div>
@@ -121,20 +132,61 @@ def main():
 def upload():
     try:
         img_data = request.form.get('myImage').replace("data:image/png;base64,","")
-        aleatorio = request.form.get('numero')
+        # #aleatorio = request.form.get('numero')
+        img_data = base64.b64decode(img_data)
 
+        # Convert the image data to a PIL Image object
+        img = Image.open(BytesIO(img_data))
+
+        print("flag1")
         # Guardar la imagen
-        with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(aleatorio)) as fh:
-            fh.write(base64.b64decode(img_data))
+        # with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(aleatorio)) as fh:
+        #      fh.write(base64.b64decode(img_data))
 
-        # Cargar la imagen y realizar la predicción
-        img = image.load_img(fh.name, target_size=(200, 200))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
+        print("flag2")
+        
+        white_img = Image.new('RGBA', img.size, 'WHITE')  # Create a white rgba background
 
-        # Realizar la predicción
-        result = modelo.predict(img_array)
-        predicted_class = np.argmax(result)
+        # Paste the image file on the white image
+        img = Image.alpha_composite(white_img, img)
+        img = img.convert('L')
+        img = np.array(img)/255.0
+       
+        print("data type ", img.dtype)
+        print("minimo maximo ",img.min(), img.max())
+    
+        plt.imshow(img , cmap='gray' )
+        plt.show()
+        
+        print("flag2.1")
+        #img = np.invert(img)
+        # plt.imshow(img , cmap='gray' )
+        # plt.show()
+        print("flag2.2")
+        img = resize(img, (28, 28))
+        plt.imshow(img, cmap='gray')
+        plt.show()
+        print("flag2.3")
+        img = img.reshape((1, 28, 28, 1))
+        print("flag2.4")
+        ##################################
+
+        
+        plt.imshow(img[0,:,:,0] )
+        plt.show()
+        print(type(img))
+        print(img.shape)
+        print(len(img))
+        print("contenido ",img.size)
+
+        #img = img/255
+
+        result = modelo.predict(img[None,:,:,:])[0]
+        #result = modelo.predict(img)
+
+        print("Result:", result)
+        predicted_class = np.argmax(result,axis=1)
+        print("Predicted class:", predicted_class)
 
         # Mapa de clases a nombres
         class_names = ["pi", "beta", "gamma", "delta", "epsilon"]
@@ -149,11 +201,11 @@ def upload():
 
     return redirect("/", code=302)
 
-# Resto del código igual
-
 if __name__ == "__main__":
     digits = ["pi", "beta", "gamma", "delta", "epsilon"]
     for d in digits:
         if not os.path.exists(str(d)):
             os.mkdir(str(d))
     app.run()
+
+#
