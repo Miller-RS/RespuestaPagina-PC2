@@ -1,4 +1,8 @@
+# Link , donde generamos los simbolos griegos:
 https://github.com/JhonPoma/GuardamosSimbolos---2PC-grafica
+# Servidor Railway, para generar los simbolos:
+https://web-production-b831.up.railway.app/
+
 
 # EntrenandoPC2
 **Integrante**
@@ -11,5 +15,5 @@ En el GoogleColab el entrenamiento esta prediciendo correctamente. </br>
 Generamos el modelo_entrenado.h5 y my_models.h5 , y modificamos el main.py para que ahora podamos ingresar un simbolo </br>
 y la pagina , gracias al entrenamiento, nos responda diciendo cual es el simbolo que agregamos.
 
-Pero no se pudo subir al servidor Railway. pero de manera local si funciona.
+Pero no se pudo subir al servidor Railway. pero de manera local si funciona.</br>
 https://web-production-a6b40.up.railway.app/
