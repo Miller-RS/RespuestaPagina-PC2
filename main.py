@@ -1,21 +1,12 @@
-import tempfile
 import os
-from flask import Flask, request, redirect, send_file, jsonify
-from skimage import io
+from flask import Flask, request, redirect
 import base64
-import glob
 import numpy as np
 from keras.models import load_model
-from keras.preprocessing import image
 from io import BytesIO
 from PIL import Image
-from skimage.color import rgb2gray
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 from io import BytesIO
-from imageio import imread
 from skimage.transform import resize
-#import cv2
 
 app = Flask(__name__)
 
@@ -32,7 +23,7 @@ main_html = """
 
   function InitThis() {
       ctx = document.getElementById('myCanvas').getContext("2d");
-      document.getElementById('mensaje').innerHTML  = 'Dibujando...';
+      document.getElementById('mensaje').innerHTML  = '';
       document.getElementById('numero').value = '';  // Elimina la sugerencia inicial
 
       $('#myCanvas').mousedown(function (e) {
@@ -69,7 +60,7 @@ main_html = """
   }
 
   function clearArea() {
-      // Use the identity matrix while clearing the canvas
+      // Restablece el lienzo limpiando el dibujo
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   }
@@ -85,7 +76,7 @@ function prepareImg() {
     // Realizar una solicitud AJAX para enviar la imagen
     var formData = new FormData(document.forms[0]);
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "upload", true);
+    xhr.open("POST", "/upload", true);
     xhr.onreadystatechange = function () {
         if (xhr.readyState == 4 && xhr.status == 200) {
             var response = xhr.responseText;
@@ -105,8 +96,20 @@ function prepareImg() {
     <div align="left">
       <img src="https://upload.wikimedia.org/wikipedia/commons/f/f7/Uni-logo_transparente_granate.png" width="300"/>
     </div>
+    <div align="rigth">
+        <h2>Instrucciones</h2>
+        <p> 1. Dibujar el simbolo en el cuadrado </p>
+        <p> 2. Precionar "enviar" </p>
+        <p> 3. Te redirigira a una pagina "upload" donde mostrara el nombre del simbolo seleccionado </p>
+        <p> 4. Retroceder, para volver a dibujar otro simbolo </p>
+        <p> 5. Repite los pasos del 1 al 5 </p>
+
+
+
+        
+    </div>
     <div align="center">
-        <h1 id="mensaje">Dibujando...</h1>
+        <h1 id="mensaje"></h1>
         <canvas id="myCanvas" width="200" height="200" style="border:2px solid black"></canvas>
         <br/>
         <br/>
@@ -131,64 +134,34 @@ def main():
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
-        img_data = request.form.get('myImage').replace("data:image/png;base64,","")
-        # #aleatorio = request.form.get('numero')
+        img_data = request.form.get('myImage').replace(
+            "data:image/png;base64,", "")
         img_data = base64.b64decode(img_data)
 
-        # Convert the image data to a PIL Image object
+        # Convertir los datos de la imagen a un objeto PIL Image
         img = Image.open(BytesIO(img_data))
 
-        print("flag1")
-        # Guardar la imagen
-        # with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(aleatorio)) as fh:
-        #      fh.write(base64.b64decode(img_data))
+        # Crear un fondo blanco RGBA
+        white_img = Image.new('RGBA', img.size, 'WHITE')
 
-        print("flag2")
-        
-        white_img = Image.new('RGBA', img.size, 'WHITE')  # Create a white rgba background
-
-        # Paste the image file on the white image
+        # Pegar la imagen en el fondo blanco
         img = Image.alpha_composite(white_img, img)
         img = img.convert('L')
         img = np.array(img)/255.0
-       
-        print("data type ", img.dtype)
-        print("minimo maximo ",img.min(), img.max())
-    
-        plt.imshow(img , cmap='gray' )
-        plt.show()
-        
-        print("flag2.1")
-        #img = np.invert(img)
-        # plt.imshow(img , cmap='gray' )
-        # plt.show()
-        print("flag2.2")
+
         img = resize(img, (28, 28))
-        plt.imshow(img, cmap='gray')
-        plt.show()
-        print("flag2.3")
-        img = img.reshape((1, 28, 28, 1))
-        print("flag2.4")
-        ##################################
 
-        
-        plt.imshow(img[0,:,:,0] )
-        plt.show()
-        print(type(img))
-        print(img.shape)
-        print(len(img))
-        print("contenido ",img.size)
+        img = img.reshape((28, 28, 1))
 
-        #img = img/255
+        img = 1 - img
 
-        result = modelo.predict(img[None,:,:,:])[0]
-        #result = modelo.predict(img)
+        result = modelo.predict(img[None, :, :, :])[0]
 
-        print("Result:", result)
-        predicted_class = np.argmax(result,axis=1)
-        print("Predicted class:", predicted_class)
+        print("Resultado:", result)
+        predicted_class = np.argmax(result, axis=0)
+        print("Clase predicha:", predicted_class)
 
-        # Mapa de clases a nombres
+        # Mapeo de clases a nombres
         class_names = ["pi", "beta", "gamma", "delta", "epsilon"]
         predicted_symbol = class_names[predicted_class]
 
@@ -196,7 +169,7 @@ def upload():
         return f"El símbolo reconocido es: {predicted_symbol}"
 
     except Exception as err:
-        print("Error occurred")
+        print("Ocurrió un error")
         print(err)
 
     return redirect("/", code=302)
@@ -207,5 +180,4 @@ if __name__ == "__main__":
         if not os.path.exists(str(d)):
             os.mkdir(str(d))
     app.run()
-
 #
