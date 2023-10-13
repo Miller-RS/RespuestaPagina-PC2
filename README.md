@@ -17,3 +17,6 @@ y la pagina , gracias al entrenamiento, nos responda diciendo cual es el simbolo
 
 Pero no se pudo subir al servidor Railway. pero de manera local si funciona.</br>
 https://web-production-a6b40.up.railway.app/
+
+En alternativa subimos el projecto a la nube en este caso a Azure usando una maquina virtual con windows server 2019
+http://pc2grafica.westus3.cloudapp.azure.com/
